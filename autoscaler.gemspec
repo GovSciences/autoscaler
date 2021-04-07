@@ -19,7 +19,7 @@ Gem::Specification.new do |s|
 
   s.require_paths = ["lib"]
 
-  s.required_ruby_version = '~> 2.1'
+  s.required_ruby_version = '> 2.1'
 
   s.add_runtime_dependency "sidekiq", '< 7'
   s.add_runtime_dependency "platform-api", '~> 2.0'
