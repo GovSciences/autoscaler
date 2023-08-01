@@ -5,8 +5,9 @@ module Autoscaler
     #@param [integer] max_workers     maximum number of workers to spin up.
     #@param [integer] worker_capacity the amount of jobs one worker can handle
     #@param [float]   min_factor      minimum work required to scale, as percentage of worker_capacity
-    def initialize(max_workers: 1, worker_capacity: 25, min_factor: 0)
+    def initialize(max_workers: 1, min_workers: 0, worker_capacity: 25, min_factor: 0)
       @max_workers             = max_workers # max # of workers we can scale to
+      @min_workers             = min_workers # min # of workers we can scale to
       @total_capacity          = (@max_workers * worker_capacity).to_f # total capacity of max workers
       min_capacity             = [0, min_factor].max.to_f * worker_capacity # min capacity required to scale first worker
       @min_capacity_percentage = min_capacity / @total_capacity # min percentage of total capacity
@@ -16,7 +17,8 @@ module Autoscaler
     # @param [Numeric] event_idle_time number of seconds since a job related event
     # @return [Integer] target number of workers
     def call(system, event_idle_time)
-      requested_capacity_percentage = total_work(system) / @total_capacity
+      work = total_work(system)
+      requested_capacity_percentage = work / @total_capacity
 
       # Scale requested capacity taking into account the minimum required
       scale_factor = (requested_capacity_percentage - @min_capacity_percentage) / (@total_capacity - @min_capacity_percentage)
@@ -25,10 +27,11 @@ module Autoscaler
       scaled_capacity_percentage = scale_factor * @total_capacity
 
       ideal_workers = ([0, scaled_capacity_percentage].max * @max_workers).ceil
-      min_workers   = [system.workers, ideal_workers].max  # Don't scale down past number of currently engaged workers
+      min_workers   = [system.workers, @min_workers, ideal_workers].max  # Don't scale down past number of currently engaged workers
       max_workers   = [min_workers,  @max_workers].min     # Don't scale up past number of max workers
-
-      return [min_workers, max_workers].min
+      scale_to = [min_workers, max_workers].min
+      puts "#{self.class.name} - returning #{scale_to} - @max_workers: #{@max_workers}, @min_workers: #{@min_workers}, system workers: #{system.workers}, ideal_workers: #{ideal_workers}, work: #{work}, @total_capacity: #{@total_capacity}, min_capacity_percentage: #{@min_capacity_percentage}, requested_capacity_percentage: #{requested_capacity_percentage}, scale_factor: #{scale_factor}, scaled_capacity_percentage: #{scaled_capacity_percentage}"
+      return scale_to
     end
 
     private

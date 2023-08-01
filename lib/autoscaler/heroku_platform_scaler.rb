@@ -33,7 +33,11 @@ module Autoscaler
       unknown = false
       current = @workers.counter{unknown = true; 1}
       if n != current || unknown
-        p "Scaling #{type} to #{n}"
+        if unknown
+          p "#{self.class.name} - Scaling #{type} dynos to #{n} (current unknown)"
+        else
+          p "#{self.class.name} - Scaling #{type} dynos from #{current} to #{n}"
+        end
         heroku_set_workers(n)
         @workers.counter = n
       end
